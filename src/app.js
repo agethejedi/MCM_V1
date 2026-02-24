@@ -305,3 +305,4 @@ async function refresh() {
   await refresh();
   setInterval(() => refresh().catch(() => {}), UI_REFRESH_MS);
 })();
+
