@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>MCM | Making Cash Money</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <div class="logo"></div>
+        <div>
+          <h1>MCM — MAKING CASH MONEY</h1>
+          <div class="sub">10‑Day Reversal Tracker + Coach (experimental thesis testing)</div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <a class="navlink" href="/">Dashboard</a>
+        <a class="navlink" href="/faq.html">FAQ / Playbook</a>
+        <button id="resetConfirms" title="Reset first-confirm timeline (keeps baselines)">Reset confirms</button>
+        <button id="reset" title="Reset baselines + confirms (full reset)">Reset baselines</button>
+      </div>
+    </header>
+
+    <main>
+      <div class="regime neutral" id="regime">
+        <div class="regime-left">
+          <div class="regime-title" id="regimeTitle">MARKET REGIME: —</div>
+          <div class="regime-sub" id="regimeSub">Waiting for signals…</div>
+          <div class="regime-first" id="regimeFirst">First confirms: —</div>
+        </div>
+        <div class="regime-right" id="regimeMeta">—</div>
+      </div>
+
+      <div class="metaTop">
+        <div>Symbols: <span id="symbolsLabel">—</span></div>
+        <div>Tracking: <span id="daycount">—</span></div>
+        <div>Data as‑of: <span id="asof">—</span></div>
+      </div>
+
+      <div class="coach">
+        <div class="coach-title">MCM Coach — Hourly Tape Read</div>
+        <div class="coach-sub" id="coachAsOf">—</div>
+        <ul class="coach-bullets" id="coachBullets"></ul>
+      </div>
+
+      <div class="grid" id="grid"></div>
+    </main>
+
+    <script type="module" src="/src/app.js"></script>
+  </body>
+</html>

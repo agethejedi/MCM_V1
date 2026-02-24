@@ -1,0 +1,14 @@
+# Optional (for local emulation / Workers tooling).
+# Cloudflare Pages deploy does not require this file, but it's handy.
+
+name = "mcm"
+compatibility_date = "2026-02-23"
+
+# Bindings in Pages are configured in the Cloudflare dashboard.
+# For wrangler dev you can map them here:
+# kv_namespaces = [
+#   { binding = "MCM_KV", id = "YOUR_KV_NAMESPACE_ID" }
+# ]
+
+# Secrets:
+# wrangler secret put TWELVE_DATA_API_KEY
