@@ -1,6 +1,9 @@
+// src/api.js
+
 export async function getSnapshot(symbols) {
   const u = new URL("/api/snapshot", window.location.origin);
   u.searchParams.set("symbols", symbols.join(","));
+  u.searchParams.set("_", String(Date.now())); // cache-bust
   const r = await fetch(u, { cache: "no-store" });
   if (!r.ok) throw new Error(`snapshot failed: ${r.status}`);
   return await r.json();
@@ -8,20 +11,30 @@ export async function getSnapshot(symbols) {
 
 export async function getCoachLatest() {
   try {
-    const r = await fetch(`/api/coach/latest`);
+    const u = new URL("/api/coach/latest", window.location.origin);
+    u.searchParams.set("_", String(Date.now())); // cache-bust
+
+    const r = await fetch(u, { cache: "no-store" });
     if (!r.ok) return null;
 
     const j = await r.json();
-    if (!j || !j.coach) return null;
+
+    // Accept either:
+    // 1) { ok:true, coach:{...} }
+    // 2) { coach:{...} }
+    // 3) direct coach object { asof_local, text, ... }
+    // 4) null
+    const coach = (j && typeof j === "object" && "coach" in j) ? j.coach : j;
+
+    if (!coach || typeof coach !== "object") return null;
 
     return {
-      asof_local: j.coach.asof_local,
-      asof_market: j.coach.asof_market,
-      session: j.coach.session,
-      text: Array.isArray(j.coach.text) ? j.coach.text : [String(j.coach.text || "")]
+      asof_local: coach.asof_local || null,
+      asof_market: coach.asof_market || null,
+      session: coach.session || null,
+      text: Array.isArray(coach.text) ? coach.text : [String(coach.text || "")]
     };
   } catch {
     return null;
   }
 }
-
