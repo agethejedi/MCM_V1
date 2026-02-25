@@ -7,7 +7,20 @@ export async function getSnapshot(symbols) {
 }
 
 export async function getCoachLatest() {
-  const r = await fetch("/api/coach/latest", { cache: "no-store" });
-  if (!r.ok) return null;
-  return await r.json();
+  try {
+    const r = await fetch(`/api/coach/latest`);
+    if (!r.ok) return null;
+
+    const j = await r.json();
+    if (!j || !j.coach) return null;
+
+    return {
+      asof_local: j.coach.asof_local,
+      asof_market: j.coach.asof_market,
+      session: j.coach.session,
+      text: Array.isArray(j.coach.text) ? j.coach.text : [String(j.coach.text || "")]
+    };
+  } catch {
+    return null;
+  }
 }
