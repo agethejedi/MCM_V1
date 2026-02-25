@@ -1,21 +1,33 @@
-import { json, getNowInTZ, isRTH, formatLocal } from "../../_util.js";
+// functions/api/coach/latest.js
+// Reads latest coach output from KV.
+// KV binding name expected: env.MCM_KV (but will fall back to any KV-like binding)
+
+function json(data, status = 200) {
+  return new Response(JSON.stringify(data, null, 2), {
+    status,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+      "access-control-allow-origin": "*",
+    },
+  });
+}
+
+function getKV(env) {
+  if (env.MCM_KV) return env.MCM_KV;
+  if (env.KV) return env.KV;
+  for (const k of Object.keys(env || {})) {
+    const v = env[k];
+    if (v && typeof v.get === "function" && typeof v.put === "function") return v;
+  }
+  return null;
+}
 
 export async function onRequestGet({ env }) {
-  if (!env.MCM_KV) return json({ error: "Missing KV binding MCM_KV" }, 500);
+  const kv = getKV(env);
+  if (!kv) return json({ error: "Missing KV binding (expected env.MCM_KV)" }, 500);
 
-  // v0 coach: placeholder (no extra API credits).
-  // Next iteration: store last snapshot in KV and compute true hourly summaries.
-  const nowET = getNowInTZ("America/New_York");
-  const session = isRTH(nowET) ? "RTH" : "ETH";
-
-  return json({
-    asof_market: `${nowET.year}-${String(nowET.month).padStart(2,"0")}-${String(nowET.day).padStart(2,"0")} ${String(nowET.hour).padStart(2,"0")}:${String(nowET.minute).padStart(2,"0")} ET`,
-    asof_local: formatLocal("America/Chicago"),
-    session,
-    regime: "—",
-    text: [
-      "MCM Coach is on. This iteration prioritizes pricing cadence + the teaching layer.",
-      "Next iteration: /api/snapshot will store the latest snapshot in KV so the Coach can summarize hourly without spending credits."
-    ]
-  });
+  const data = await kv.get("mcm:coach:latest", "json");
+  // Return null if not generated yet (UI will just keep placeholder)
+  return json(data || null);
 }
