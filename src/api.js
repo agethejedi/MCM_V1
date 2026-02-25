@@ -24,3 +24,4 @@ export async function getCoachLatest() {
     return null;
   }
 }
+
