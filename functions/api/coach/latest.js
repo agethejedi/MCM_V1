@@ -31,3 +31,4 @@ export async function onRequestGet({ env }) {
   // Return null if not generated yet (UI will just keep placeholder)
   return json(data || null);
 }
+
