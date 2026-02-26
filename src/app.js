@@ -381,3 +381,4 @@ async function refresh() {
   await refreshCoach();
   setInterval(() => refreshCoach().catch(() => {}), COACH_REFRESH_MS);
 })();
+
