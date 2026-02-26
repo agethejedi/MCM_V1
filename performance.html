@@ -1,0 +1,98 @@
+<!-- performance.html -->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MCM — Performance</title>
+
+    <!-- reuse your existing styles -->
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">MCM</div>
+        <div>
+          <div class="title">Making Cash Money</div>
+          <div class="sub">Experimental market behavior tracker</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <a class="navlink" href="/">Dashboard</a>
+        <a class="navlink active" href="/performance.html">Performance</a>
+        <a class="navlink" href="/faq.html">FAQ / Playbook</a>
+      </nav>
+    </header>
+
+    <main class="wrap">
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Performance Tracker</h2>
+          <div class="muted" id="asof">As-of: —</div>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi">
+            <div class="kpi-label">Basket (Equal Weight) — Cumulative</div>
+            <div class="kpi-value" id="basketCum">—</div>
+            <div class="kpi-sub" id="basketCumSub">Since Day-0 baseline</div>
+          </div>
+
+          <div class="kpi">
+            <div class="kpi-label">Basket (Equal Weight) — Today</div>
+            <div class="kpi-value" id="basketDay">—</div>
+            <div class="kpi-sub" id="basketDaySub">Vs previous close</div>
+          </div>
+
+          <div class="kpi">
+            <div class="kpi-label">Breadth</div>
+            <div class="kpi-value" id="breadth">—</div>
+            <div class="kpi-sub" id="breadthSub">Positive today / positive cumulative</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h3>Daily + Cumulative Scorecard</h3>
+          <div class="row">
+            <button class="btn" id="refreshBtn">Refresh</button>
+          </div>
+        </div>
+
+        <!-- desktop/tablet -->
+        <div class="table-wrap">
+          <table class="table" id="perfTable">
+            <thead>
+              <tr>
+                <th>Symbol</th>
+                <th>Cohort</th>
+                <th>Baseline (Day-0)</th>
+                <th>Prev Close</th>
+                <th>Last</th>
+                <th>Today $</th>
+                <th>Today %</th>
+                <th>Cumulative $</th>
+                <th>Cumulative %</th>
+                <th>RTH Reversal</th>
+              </tr>
+            </thead>
+            <tbody id="perfTbody"></tbody>
+          </table>
+        </div>
+
+        <!-- mobile cards -->
+        <div class="cards" id="perfCards"></div>
+      </section>
+
+      <footer class="footer muted">
+        Experimental research tool. Not investment advice. Do not share this link.
+      </footer>
+    </main>
+
+    <script type="module" src="/src/performance.js"></script>
+  </body>
+</html>
