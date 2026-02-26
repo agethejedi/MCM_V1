@@ -8,11 +8,23 @@ const START_KEY = "mcm_start_v1";
 const CONF_KEY = "mcm_confirm_first_v1";
 const FIRST_RENDER_KEY = "mcm_first_render_v1";
 
+// Coach persistence + cadence
+const COACH_REFRESH_MS = 30 * 60 * 1000; // 30 minutes
+const COACH_LAST_KEY = "mcm_coach_last_v1";
+
 function loadJSON(key, fallback) {
-  try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); } catch { return fallback; }
+  try {
+    return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
+  } catch {
+    return fallback;
+  }
 }
-function saveJSON(key, obj) { localStorage.setItem(key, JSON.stringify(obj)); }
-function nowISO() { return new Date().toISOString(); }
+function saveJSON(key, obj) {
+  localStorage.setItem(key, JSON.stringify(obj));
+}
+function nowISO() {
+  return new Date().toISOString();
+}
 
 function setStartIfMissing() {
   if (!localStorage.getItem(START_KEY)) localStorage.setItem(START_KEY, new Date().toISOString());
@@ -50,9 +62,9 @@ function tileHtml(s) {
     <div class="price" id="price-${s.symbol}">—</div>
 
     <div class="meta">
-      <div>Baseline (Day‑0 close): <span id="base-${s.symbol}">—</span></div>
+      <div>Baseline (Day-0 close): <span id="base-${s.symbol}">—</span></div>
       <div>Last: <span id="last-${s.symbol}">—</span></div>
-      <div>As‑of: <span id="asof-${s.symbol}">—</span></div>
+      <div>As-of: <span id="asof-${s.symbol}">—</span></div>
     </div>
 
     <div class="session">
@@ -85,7 +97,7 @@ function tileHtml(s) {
 
 function mount() {
   setStartIfMissing();
-  $("#symbolsLabel").textContent = SYMBOLS.map(s => s.symbol).join(", ");
+  $("#symbolsLabel").textContent = SYMBOLS.map((s) => s.symbol).join(", ");
   $("#grid").innerHTML = SYMBOLS.map(tileHtml).join("");
 
   $("#reset").addEventListener("click", () => {
@@ -93,6 +105,7 @@ function mount() {
     localStorage.removeItem(START_KEY);
     localStorage.removeItem(CONF_KEY);
     localStorage.removeItem(FIRST_RENDER_KEY);
+    localStorage.removeItem(COACH_LAST_KEY);
     location.reload();
   });
 
@@ -117,8 +130,8 @@ function getFirstConfirms({ session = "RTH", limit = 3 } = {}) {
   return Object.entries(conf)
     .filter(([k]) => k.endsWith(`:${session}`))
     .map(([k, t]) => ({ symbol: k.split(":")[0], iso: t, time: new Date(t).getTime() }))
-    .filter(x => Number.isFinite(x.time))
-    .sort((a,b) => a.time - b.time)
+    .filter((x) => Number.isFinite(x.time))
+    .sort((a, b) => a.time - b.time)
     .slice(0, limit);
 }
 
@@ -131,23 +144,25 @@ function updateFirstConfirmsUI(forceNoPulse = false) {
 
   const fmtTime = (iso) => new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
-  const sig = (items) => items.map(x => `${x.symbol}@${x.iso}`);
+  const sig = (items) => items.map((x) => `${x.symbol}@${x.iso}`);
   const prev = loadJSON(FIRST_RENDER_KEY, {});
   const prevR = prev.RTH || [];
   const prevE = prev.ETH || [];
   const curR = sig(firstR);
   const curE = sig(firstE);
 
-  const newR = forceNoPulse ? new Set() : new Set(curR.filter(x => !prevR.includes(x)));
-  const newE = forceNoPulse ? new Set() : new Set(curE.filter(x => !prevE.includes(x)));
+  const newR = forceNoPulse ? new Set() : new Set(curR.filter((x) => !prevR.includes(x)));
+  const newE = forceNoPulse ? new Set() : new Set(curE.filter((x) => !prevE.includes(x)));
 
   function renderList(label, items, tone, newSet) {
     if (!items.length) return `<span class="tag ${tone}">${label}: —</span>`;
-    const tags = items.map(x => {
-      const key = `${x.symbol}@${x.iso}`;
-      const pulse = newSet.has(key) ? "pulse" : "";
-      return `<span class="tag ${tone} ${pulse}">${x.symbol} @ ${fmtTime(x.iso)}</span>`;
-    }).join("");
+    const tags = items
+      .map((x) => {
+        const key = `${x.symbol}@${x.iso}`;
+        const pulse = newSet.has(key) ? "pulse" : "";
+        return `<span class="tag ${tone} ${pulse}">${x.symbol} @ ${fmtTime(x.iso)}</span>`;
+      })
+      .join("");
     return `<span class="tag ${tone}">${label}:</span> ${tags}`;
   }
 
@@ -164,52 +179,110 @@ function evaluateRegime(statesBySymbol) {
   if (!syms.length) return { label: "—", tone: "neutral", reason: "No symbols." };
 
   const total = syms.length;
-  const confirmedRth = syms.filter(s => statesBySymbol[s].rthConfirmed).length;
-  const confirmedEth = syms.filter(s => statesBySymbol[s].ethConfirmed).length;
-  const posHigh = syms.filter(s => (statesBySymbol[s].rthPerfHigh ?? 0) > 0).length;
+  const confirmedRth = syms.filter((s) => statesBySymbol[s].rthConfirmed).length;
+  const confirmedEth = syms.filter((s) => statesBySymbol[s].ethConfirmed).length;
+  const posHigh = syms.filter((s) => (statesBySymbol[s].rthPerfHigh ?? 0) > 0).length;
 
-  const leaders = syms.filter(s => statesBySymbol[s].cohort === "liquidity_leader");
-  const reflex  = syms.filter(s => statesBySymbol[s].cohort === "reflex_bounce");
-  const macro   = syms.filter(s => statesBySymbol[s].cohort === "macro_sensitive");
+  const leaders = syms.filter((s) => statesBySymbol[s].cohort === "liquidity_leader");
+  const reflex = syms.filter((s) => statesBySymbol[s].cohort === "reflex_bounce");
+  const macro = syms.filter((s) => statesBySymbol[s].cohort === "macro_sensitive");
 
-  const leadersR = leaders.filter(s => statesBySymbol[s].rthConfirmed).length;
-  const reflexR  = reflex.filter(s => statesBySymbol[s].rthConfirmed).length;
-  const macroR   = macro.filter(s => statesBySymbol[s].rthConfirmed).length;
+  const leadersR = leaders.filter((s) => statesBySymbol[s].rthConfirmed).length;
+  const reflexR = reflex.filter((s) => statesBySymbol[s].rthConfirmed).length;
+  const macroR = macro.filter((s) => statesBySymbol[s].rthConfirmed).length;
 
-  const leaderStrong = leaders.length ? (leadersR / leaders.length) >= 0.5 : false;
-  const reflexStrong = reflex.length ? (reflexR / reflex.length) >= 0.5 : false;
-  const breadthGood  = (posHigh / total) >= 0.5;
+  const leaderStrong = leaders.length ? leadersR / leaders.length >= 0.5 : false;
+  const reflexStrong = reflex.length ? reflexR / reflex.length >= 0.5 : false;
+  const breadthGood = posHigh / total >= 0.5;
 
-  const macroFailing = macro.length ? (macroR / macro.length) < 0.34 : false;
-  const confirmLow   = (confirmedRth / total) < 0.34;
-  const breadthWeak  = (posHigh / total) < 0.34;
+  const macroFailing = macro.length ? macroR / macro.length < 0.34 : false;
+  const confirmLow = confirmedRth / total < 0.34;
+  const breadthWeak = posHigh / total < 0.34;
 
-  if ((leaderStrong && reflexStrong && breadthGood) || ((confirmedRth / total) >= 0.5 && leaderStrong)) {
-    return { label: "PANIC EVENT (MEAN REVERSION)", tone: "good",
-      reason: `Leaders + reflex names are confirming; breadth improving (${posHigh}/${total} RTH positive by high).` };
+  if ((leaderStrong && reflexStrong && breadthGood) || (confirmedRth / total >= 0.5 && leaderStrong)) {
+    return {
+      label: "PANIC EVENT (MEAN REVERSION)",
+      tone: "good",
+      reason: `Leaders + reflex names are confirming; breadth improving (${posHigh}/${total} RTH positive by high).`,
+    };
   }
   if (confirmLow && breadthWeak && macroFailing) {
-    return { label: "ECONOMIC REPRICING (RISK‑OFF TREND)", tone: "bad",
-      reason: `Low confirmations (${confirmedRth}/${total}) + weak breadth (${posHigh}/${total}) + macro‑sensitive lag.` };
+    return {
+      label: "ECONOMIC REPRICING (RISK-OFF TREND)",
+      tone: "bad",
+      reason: `Low confirmations (${confirmedRth}/${total}) + weak breadth (${posHigh}/${total}) + macro-sensitive lag.`,
+    };
   }
-  return { label: "STABILIZATION (CHOP / RANGE)", tone: "neutral",
-    reason: `Mixed signals: RTH confirms ${confirmedRth}/${total}, ETH confirms ${confirmedEth}/${total}, breadth ${posHigh}/${total}.` };
+  return {
+    label: "STABILIZATION (CHOP / RANGE)",
+    tone: "neutral",
+    reason: `Mixed signals: RTH confirms ${confirmedRth}/${total}, ETH confirms ${confirmedEth}/${total}, breadth ${posHigh}/${total}.`,
+  };
 }
 
 function updateRegimeBanner(regime, metaText) {
   const el = $("#regime");
-  el.classList.remove("good","bad","neutral");
+  el.classList.remove("good", "bad", "neutral");
   el.classList.add(regime.tone);
   $("#regimeTitle").textContent = `MARKET REGIME: ${regime.label}`;
   $("#regimeSub").textContent = regime.reason;
   $("#regimeMeta").textContent = metaText || "—";
 }
 
+/* -----------------------------
+   COACH: persist + 30m refresh
+-------------------------------- */
+
+function renderCoach(coach) {
+  if (!coach) return;
+  const asof = coach.asof_local || coach.asof_market || "—";
+  const session = coach.session || "—";
+  $("#coachAsOf").textContent = `As-of: ${asof} • Session: ${session}`;
+
+  const ul = $("#coachBullets");
+  ul.innerHTML = "";
+  (coach.text || []).slice(0, 8).forEach((line) => {
+    const li = document.createElement("li");
+    li.textContent = line;
+    ul.appendChild(li);
+  });
+}
+
+function loadCoachFromStorage() {
+  try {
+    const raw = localStorage.getItem(COACH_LAST_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function saveCoachToStorage(coach) {
+  try {
+    localStorage.setItem(COACH_LAST_KEY, JSON.stringify(coach));
+  } catch {}
+}
+
+async function refreshCoach() {
+  const coach = await getCoachLatest();
+
+  // If API returns null or empty, keep whatever is already on screen.
+  if (!coach || !Array.isArray(coach.text) || coach.text.length === 0) return;
+
+  renderCoach(coach);
+  saveCoachToStorage(coach);
+}
+
+/* -----------------------------
+   SNAPSHOT refresh
+-------------------------------- */
+
 async function refresh() {
   const day = Math.min(daysSinceStart(), DAYS_TO_TRACK);
   $("#daycount").textContent = `${day} / ${DAYS_TO_TRACK} days`;
 
-  const symbols = SYMBOLS.map(s => s.symbol);
+  const symbols = SYMBOLS.map((s) => s.symbol);
   const snap = await getSnapshot(symbols);
 
   // Persist baselines from backend (source of truth)
@@ -243,7 +316,7 @@ async function refresh() {
     tile.classList.toggle("neg", rthPerf < 0);
 
     const pill = $(`#pill-${s.symbol}`);
-    pill.textContent = (rthConfirmed ? "REV ✅" : "REV ⛔");
+    pill.textContent = rthConfirmed ? "REV ✅" : "REV ⛔";
     pill.classList.toggle("pill-good", rthConfirmed);
     pill.classList.toggle("pill-bad", !rthConfirmed);
 
@@ -269,7 +342,9 @@ async function refresh() {
     ethRev.textContent = ethAvailable ? (ethConfirmed ? "CONFIRMED" : "NOT SATISFIED") : "LOCKED";
     ethRev.classList.toggle("good", ethAvailable && ethConfirmed);
     ethRev.classList.toggle("bad", !ethAvailable || !ethConfirmed);
-    $(`#ethdetail-${s.symbol}`).textContent = ethAvailable ? (d.eth?.reversal?.detail || "") : "Extended-hours data may require a higher-tier feed.";
+    $(`#ethdetail-${s.symbol}`).textContent = ethAvailable
+      ? d.eth?.reversal?.detail || ""
+      : "Extended-hours data may require a higher-tier feed.";
     $(`#ethpill-${s.symbol}`).textContent = `ETH ${snap._meta?.cadence_eth || "1h"}`;
 
     recordFirstConfirms(s.symbol, rthConfirmed, ethConfirmed);
@@ -278,30 +353,31 @@ async function refresh() {
       cohort: s.cohort,
       rthConfirmed,
       ethConfirmed,
-      rthPerfHigh: rthPerf
+      rthPerfHigh: rthPerf,
     };
   }
 
   const regime = evaluateRegime(states);
-  updateRegimeBanner(regime, snap._meta?.note || "Signals update from cached snapshots (credits‑aware).");
+  updateRegimeBanner(regime, snap._meta?.note || "Signals update from cached snapshots (credits-aware).");
   updateFirstConfirmsUI();
-
-  // Coach (v0 placeholder)
-  const coach = await getCoachLatest();
-  if (coach) {
-    $("#coachAsOf").textContent = `As‑of: ${coach.asof_local || coach.asof_market || "—"} • Session: ${coach.session || "—"}`;
-    const ul = $("#coachBullets");
-    ul.innerHTML = "";
-    (coach.text || []).slice(0, 6).forEach(line => {
-      const li = document.createElement("li");
-      li.textContent = line;
-      ul.appendChild(li);
-    });
-  }
 }
+
+/* -----------------------------
+   Boot
+-------------------------------- */
 
 (async function boot() {
   mount();
+
+  // Show last coach immediately (persists on screen through reloads)
+  const cachedCoach = loadCoachFromStorage();
+  if (cachedCoach) renderCoach(cachedCoach);
+
+  // Snapshot cadence
   await refresh();
   setInterval(() => refresh().catch(() => {}), UI_REFRESH_MS);
+
+  // Coach cadence (30 minutes)
+  await refreshCoach();
+  setInterval(() => refreshCoach().catch(() => {}), COACH_REFRESH_MS);
 })();
